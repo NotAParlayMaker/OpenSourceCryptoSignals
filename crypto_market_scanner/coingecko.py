@@ -24,8 +24,12 @@ def fetch_markets(vs_currency: str = "usd", per_page: int = 100) -> list[Coin]:
             "price_change_percentage": "1h,24h,7d",
         }
     )
-    request = Request(f"{API_URL}?{query}", headers={"User-Agent": "OpenSourceCryptoSignals/1.0"})
-    with urlopen(request, timeout=20) as response:  # nosec B310: user-invoked public market-data API
+    request = Request(
+        f"{API_URL}?{query}", headers={"User-Agent": "OpenSourceCryptoSignals/1.0"}
+    )
+    with urlopen(
+        request, timeout=20
+    ) as response:  # nosec B310: user-invoked public market-data API
         payload = json.loads(response.read().decode("utf-8"))
 
     return [
