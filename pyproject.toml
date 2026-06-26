@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,11 +8,38 @@ version = "0.1.0"
 description = "A lightweight CLI scanner for crypto trading opportunities."
 readme = "README.md"
 requires-python = ">=3.11"
-license = {text = "MIT"}
+license = {file = "LICENSE"}
 authors = [{name = "OpenSourceCryptoSignals contributors"}]
+keywords = ["crypto", "trading", "signals", "scanner", "coingecko"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Office/Business :: Financial :: Investment",
+    "Topic :: Utilities",
+]
+
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "build>=1.2",
+    "pytest>=8",
+    "twine>=5",
+]
 
 [project.scripts]
 crypto-scan = "crypto_market_scanner.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["crypto_market_scanner*"]
+exclude = ["tests*", "examples*"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

@@ -1,3 +1,4 @@
+from crypto_market_scanner import __version__
 from crypto_market_scanner.scanner import Coin, scan_market, score_coin
 
 
@@ -32,3 +33,7 @@ def test_score_coin_flags_extended_moves():
 
     assert opportunity is not None
     assert any("extended" in note for note in opportunity.risk_notes)
+
+
+def test_package_exposes_version():
+    assert __version__ == "0.1.0"

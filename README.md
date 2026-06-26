@@ -25,6 +25,26 @@ python -m pip install -e .
 crypto-scan --limit 10
 ```
 
+
+## Package installation
+
+Install the package from a local checkout:
+
+```bash
+python -m pip install .
+crypto-scan --help
+```
+
+Build distributable artifacts for PyPI or another package index:
+
+```bash
+python -m pip install .[dev]
+python -m build
+python -m twine check dist/*
+```
+
+Tagged GitHub releases can publish the package through the `Publish Python package` workflow using PyPI trusted publishing.
+
 ## Offline CSV input
 
 Use `--csv` with columns:
