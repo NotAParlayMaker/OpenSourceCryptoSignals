@@ -1,6 +1,6 @@
 # Open Source Crypto Signals
 
-A lightweight Python CLI that helps traders scan the crypto market for research candidates. It ranks assets by liquidity, short-term momentum, seven-day trend, and intraday confirmation so users can quickly build a shortlist of possible trading opportunities.
+A lightweight Python package and CLI that helps traders, developers, bots, dashboards, and research notebooks scan the crypto market for research candidates. It ranks assets by liquidity, short-term momentum, seven-day trend, and intraday confirmation so users can quickly build a shortlist of possible trading opportunities.
 
 > This project is a research aid only and is not financial advice.
 
@@ -11,6 +11,9 @@ A lightweight Python CLI that helps traders scan the crypto market for research 
 - Scores assets with transparent momentum, trend, liquidity, technical indicators, and risk heuristics.
 - Classifies candidates as bullish breakouts, bullish confirmations, momentum breakouts, possible reversals, trend pullbacks, or watchlist candidates.
 - Prints a compact terminal table that includes setup notes and performance columns.
+- Exposes importable Python dataclasses and finder functions for apps, notebooks, APIs, and automated trading research.
+- Emits JSON for downstream developer tooling and trader dashboards.
+- Finds cross-venue arbitrage packages from normalized quote CSV data after fees, slippage, and optional volume checks.
 
 ## Quick start
 
@@ -24,7 +27,7 @@ Or install the console script in editable mode:
 python -m pip install -e .
 crypto-scan --limit 10
 crypto-scan --bullish-only --limit 10
-crypto-scan --csv examples/sample_markets.csv --limit 5
+crypto-scan scan --csv examples/sample_markets.csv --format json
 ```
 
 The live command reads from CoinGecko. If CoinGecko is unreachable, rate-limited,
@@ -49,6 +52,36 @@ python -m twine check dist/*
 ```
 
 Tagged GitHub releases can publish the package through the `Publish Python package` workflow using PyPI trusted publishing.
+
+## Use it outside the terminal
+
+Developers can import the package directly in notebooks, web backends, bots, and scheduled jobs:
+
+```python
+from crypto_market_scanner import Coin, MarketQuote, find_arbitrage_packages, scan_market
+
+opportunities = scan_market([
+    Coin("SOL", "Solana", 150, 4_500_000_000, 68_000_000_000, 1.2, 8.5, 18.4),
+])
+
+packages = find_arbitrage_packages([
+    MarketQuote("Venue A", "BTC", ask=65_000, bid=64_980, base_volume=4.5, taker_fee=0.001),
+    MarketQuote("Venue B", "BTC", ask=65_250, bid=65_220, base_volume=3.2, taker_fee=0.001),
+])
+```
+
+Use `--format json` when another process needs structured results instead of a table.
+
+## Arbitrage package finder
+
+The arbitrage finder compares quotes for the same symbol across venues, models a buy venue and sell venue, subtracts taker fees, withdrawal fees, and slippage, then ranks packages by estimated profit. Quote CSV files require `venue`, `symbol`, `ask`, and `bid`; optional columns are `base_volume`, `quote_volume`, `taker_fee`, `withdrawal_fee`, and `slippage`. Fee and slippage values are decimal rates such as `0.001` for 0.10%.
+
+```bash
+crypto-scan arbitrage --quotes-csv examples/sample_quotes.csv --trade-size 1 --min-net-spread 0.5
+crypto-scan arbitrage --quotes-csv examples/sample_quotes.csv --format json
+```
+
+Always confirm transfer availability, order-book depth, settlement time, taxes, and venue risk before acting on any spread.
 
 ## Offline CSV input
 
