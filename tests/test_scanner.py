@@ -92,3 +92,40 @@ def test_scan_market_can_filter_to_bullish_only():
     opportunities = scan_market(coins, bullish_only=True)
 
     assert [item.coin.symbol for item in opportunities] == ["BULL"]
+
+
+def test_score_coin_classifies_bearish_pressure():
+    coin = Coin(
+        "DOWN",
+        "Down Token",
+        2,
+        200_000_000,
+        1_000_000_000,
+        -1.5,
+        -6.0,
+        -12.0,
+        technicals=TechnicalSignals(rsi=38, macd_histogram=-0.2, price_vs_sma50=-4),
+    )
+
+    opportunity = score_coin(coin)
+
+    assert opportunity is not None
+    assert opportunity.bias == "bearish"
+    assert opportunity.setup == "bearish pressure"
+    assert "negative 24h momentum" in opportunity.risk_notes
+
+
+def test_score_coin_handles_missing_market_cap_without_volume_ratio_error():
+    coin = Coin("NEW", "New Token", 1, 25_000_000, 0, 0, 1, 2)
+
+    opportunity = score_coin(coin)
+
+    assert opportunity is not None
+    assert opportunity.bias in {"neutral", "bullish", "bearish"}
+    assert not any("relative to market cap" in note for note in opportunity.risk_notes)
+
+
+def test_scan_market_returns_empty_for_non_positive_limit():
+    coin = Coin("BTC", "Bitcoin", 65_000, 32_000_000_000, 1_200_000_000_000, 0.4, 2.1, 7.8)
+
+    assert scan_market([coin], limit=0) == []
