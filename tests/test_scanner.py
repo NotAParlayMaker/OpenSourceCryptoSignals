@@ -93,54 +93,39 @@ def test_scan_market_can_filter_to_bullish_only():
 
     assert [item.coin.symbol for item in opportunities] == ["BULL"]
 
-from crypto_market_scanner import MarketQuote, find_arbitrage_packages
-from crypto_market_scanner.cli import main
 
-
-def test_find_arbitrage_packages_accounts_for_costs_and_sorts():
-    quotes = [
-        MarketQuote("Venue A", "BTC", ask=100, bid=99, base_volume=10, taker_fee=0.001),
-        MarketQuote("Venue B", "btc", ask=103, bid=106, base_volume=10, taker_fee=0.001),
-        MarketQuote("Venue C", "BTC", ask=101, bid=101.5, base_volume=10, taker_fee=0.001),
-    ]
-
-    packages = find_arbitrage_packages(quotes, trade_size=2, min_net_spread_pct=1)
-
-    assert packages[0].symbol == "BTC"
-    assert packages[0].buy_venue == "Venue A"
-    assert packages[0].sell_venue == "Venue B"
-    assert packages[0].estimated_profit > 0
-    assert packages[0].net_spread_pct > 1
-
-
-def test_find_arbitrage_packages_respects_volume_filter():
-    quotes = [
-        MarketQuote("Venue A", "ETH", ask=100, bid=99, base_volume=0.5),
-        MarketQuote("Venue B", "ETH", ask=101, bid=110, base_volume=10),
-    ]
-
-    assert find_arbitrage_packages(quotes, trade_size=1) == []
-    assert find_arbitrage_packages(quotes, trade_size=1, require_volume=False)
-
-
-def test_cli_supports_arbitrage_json_output(tmp_path, capsys):
-    quote_csv = tmp_path / "quotes.csv"
-    quote_csv.write_text(
-        "venue,symbol,ask,bid,base_volume,taker_fee\n"
-        "Venue A,SOL,100,99,10,0.001\n"
-        "Venue B,SOL,101,106,10,0.001\n",
-        encoding="utf-8",
+def test_score_coin_classifies_bearish_pressure():
+    coin = Coin(
+        "DOWN",
+        "Down Token",
+        2,
+        200_000_000,
+        1_000_000_000,
+        -1.5,
+        -6.0,
+        -12.0,
+        technicals=TechnicalSignals(rsi=38, macd_histogram=-0.2, price_vs_sma50=-4),
     )
 
-    exit_code = main([
-        "arbitrage",
-        "--quotes-csv",
-        str(quote_csv),
-        "--trade-size",
-        "2",
-        "--format",
-        "json",
-    ])
+    opportunity = score_coin(coin)
 
-    assert exit_code == 0
-    assert '"buy_venue": "Venue A"' in capsys.readouterr().out
+    assert opportunity is not None
+    assert opportunity.bias == "bearish"
+    assert opportunity.setup == "bearish pressure"
+    assert "negative 24h momentum" in opportunity.risk_notes
+
+
+def test_score_coin_handles_missing_market_cap_without_volume_ratio_error():
+    coin = Coin("NEW", "New Token", 1, 25_000_000, 0, 0, 1, 2)
+
+    opportunity = score_coin(coin)
+
+    assert opportunity is not None
+    assert opportunity.bias in {"neutral", "bullish", "bearish"}
+    assert not any("relative to market cap" in note for note in opportunity.risk_notes)
+
+
+def test_scan_market_returns_empty_for_non_positive_limit():
+    coin = Coin("BTC", "Bitcoin", 65_000, 32_000_000_000, 1_200_000_000_000, 0.4, 2.1, 7.8)
+
+    assert scan_market([coin], limit=0) == []

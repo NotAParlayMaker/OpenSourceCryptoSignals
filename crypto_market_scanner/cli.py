@@ -9,14 +9,28 @@ import sys
 from dataclasses import asdict
 from pathlib import Path
 
-from .arbitrage import MarketQuote, find_arbitrage_packages
-from .coingecko import fetch_markets
+from .coingecko import CoinGeckoError, fetch_markets
 from .scanner import Coin, TechnicalSignals, scan_market
 
 
 def _optional_float(row: dict[str, str], key: str) -> float | None:
     value = row.get(key)
-    return float(value) if value not in (None, "") else None
+    if value in (None, ""):
+        return None
+    try:
+        return float(value)
+    except ValueError as exc:
+        raise ValueError(f"Invalid numeric value for {key}: {value!r}") from exc
+
+
+def _required_float(row: dict[str, str], key: str) -> float:
+    value = row.get(key)
+    if value in (None, ""):
+        raise ValueError(f"Missing required CSV column value: {key}")
+    try:
+        return float(value)
+    except ValueError as exc:
+        raise ValueError(f"Invalid numeric value for {key}: {value!r}") from exc
 
 
 def _load_csv(path: Path) -> list[Coin]:
@@ -42,14 +56,14 @@ def _load_csv(path: Path) -> list[Coin]:
 
             coins.append(
                 Coin(
-                    symbol=row["symbol"].upper(),
-                    name=row["name"],
-                    price=float(row["price"]),
-                    volume_24h=float(row["volume_24h"]),
-                    market_cap=float(row.get("market_cap") or 0),
-                    change_1h=float(row["change_1h"]),
-                    change_24h=float(row["change_24h"]),
-                    change_7d=float(row["change_7d"]),
+                    symbol=(row.get("symbol") or "UNKNOWN").upper(),
+                    name=row.get("name") or row.get("symbol") or "Unknown",
+                    price=_required_float(row, "price"),
+                    volume_24h=_required_float(row, "volume_24h"),
+                    market_cap=_optional_float(row, "market_cap") or 0,
+                    change_1h=_optional_float(row, "change_1h") or 0,
+                    change_24h=_optional_float(row, "change_24h") or 0,
+                    change_7d=_optional_float(row, "change_7d") or 0,
                     technicals=technicals,
                 )
             )
@@ -84,6 +98,13 @@ def _format_money(value: float) -> str:
     return f"${value:,.2f}"
 
 
+def _short_notes(opportunity) -> str:
+    notes = list(opportunity.reasons[:2])
+    if opportunity.risk_notes:
+        notes.append(f"Risk: {opportunity.risk_notes[0]}")
+    return "; ".join(notes)
+
+
 def render_table(opportunities) -> str:
     """Render opportunities as a terminal-friendly table."""
 
@@ -91,7 +112,7 @@ def render_table(opportunities) -> str:
         [
             "Rank",
             "Asset",
-            "Bullish",
+            "Bias",
             "Setup",
             "Score",
             "Price",
@@ -108,7 +129,7 @@ def render_table(opportunities) -> str:
             [
                 str(rank),
                 f"{coin.symbol} ({coin.name})",
-                "YES" if opportunity.is_bullish else "no",
+                opportunity.bias,
                 opportunity.setup,
                 f"{opportunity.score:.2f}",
                 _format_money(coin.price),
@@ -116,7 +137,7 @@ def render_table(opportunities) -> str:
                 f"{coin.change_1h:+.2f}%",
                 f"{coin.change_24h:+.2f}%",
                 f"{coin.change_7d:+.2f}%",
-                "; ".join(opportunity.reasons),
+                _short_notes(opportunity),
             ]
         )
 
@@ -233,26 +254,22 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = build_parser()
-    raw_args = list(sys.argv[1:] if argv is None else argv)
-    commands = {"scan", "arbitrage"}
-    if not raw_args or (
-        raw_args[0] not in commands and raw_args[0] not in ("-h", "--help", "--version")
-    ):
-        raw_args.insert(0, "scan")
-    args = parser.parse_args(raw_args)
-    if args.command in (None, "scan"):
+    args = build_parser().parse_args(argv)
+    try:
         coins = (
             _load_csv(args.csv)
             if args.csv
             else fetch_markets(vs_currency=args.vs_currency)
         )
-        opportunities = scan_market(
-            coins,
-            min_volume=args.min_volume,
-            limit=args.limit,
-            bullish_only=args.bullish_only,
-        )
+    except (CoinGeckoError, OSError, ValueError) as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 2
+    opportunities = scan_market(
+        coins,
+        min_volume=args.min_volume,
+        limit=args.limit,
+        bullish_only=args.bullish_only,
+    )
 
         if not opportunities:
             print("No opportunities matched the current filters.")
