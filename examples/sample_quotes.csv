@@ -1,0 +1,5 @@
+venue,symbol,ask,bid,base_volume,quote_volume,taker_fee,withdrawal_fee,slippage
+Coinbase,BTC,65000,64980,4.5,292500,0.001,8,0.0005
+Kraken,BTC,65250,65220,3.2,208704,0.001,5,0.0005
+Binance,ETH,3500,3498,120,420000,0.001,1.5,0.0005
+Kraken,ETH,3525,3520,80,281600,0.001,1.5,0.0005

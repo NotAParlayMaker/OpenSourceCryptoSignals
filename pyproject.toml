@@ -5,15 +5,16 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "open-source-crypto-signals"
 version = "0.1.0"
-description = "A lightweight CLI scanner for crypto trading opportunities."
+description = "A lightweight Python package and CLI for crypto signals and arbitrage research."
 readme = "README.md"
 requires-python = ">=3.11"
 license = {file = "LICENSE"}
 authors = [{name = "OpenSourceCryptoSignals contributors"}]
-keywords = ["crypto", "trading", "signals", "scanner", "coingecko"]
+keywords = ["crypto", "trading", "signals", "scanner", "coingecko", "arbitrage"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Console",
+    "Framework :: Jupyter",
     "Intended Audience :: Financial and Insurance Industry",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",

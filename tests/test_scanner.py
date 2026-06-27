@@ -92,3 +92,55 @@ def test_scan_market_can_filter_to_bullish_only():
     opportunities = scan_market(coins, bullish_only=True)
 
     assert [item.coin.symbol for item in opportunities] == ["BULL"]
+
+from crypto_market_scanner import MarketQuote, find_arbitrage_packages
+from crypto_market_scanner.cli import main
+
+
+def test_find_arbitrage_packages_accounts_for_costs_and_sorts():
+    quotes = [
+        MarketQuote("Venue A", "BTC", ask=100, bid=99, base_volume=10, taker_fee=0.001),
+        MarketQuote("Venue B", "btc", ask=103, bid=106, base_volume=10, taker_fee=0.001),
+        MarketQuote("Venue C", "BTC", ask=101, bid=101.5, base_volume=10, taker_fee=0.001),
+    ]
+
+    packages = find_arbitrage_packages(quotes, trade_size=2, min_net_spread_pct=1)
+
+    assert packages[0].symbol == "BTC"
+    assert packages[0].buy_venue == "Venue A"
+    assert packages[0].sell_venue == "Venue B"
+    assert packages[0].estimated_profit > 0
+    assert packages[0].net_spread_pct > 1
+
+
+def test_find_arbitrage_packages_respects_volume_filter():
+    quotes = [
+        MarketQuote("Venue A", "ETH", ask=100, bid=99, base_volume=0.5),
+        MarketQuote("Venue B", "ETH", ask=101, bid=110, base_volume=10),
+    ]
+
+    assert find_arbitrage_packages(quotes, trade_size=1) == []
+    assert find_arbitrage_packages(quotes, trade_size=1, require_volume=False)
+
+
+def test_cli_supports_arbitrage_json_output(tmp_path, capsys):
+    quote_csv = tmp_path / "quotes.csv"
+    quote_csv.write_text(
+        "venue,symbol,ask,bid,base_volume,taker_fee\n"
+        "Venue A,SOL,100,99,10,0.001\n"
+        "Venue B,SOL,101,106,10,0.001\n",
+        encoding="utf-8",
+    )
+
+    exit_code = main([
+        "arbitrage",
+        "--quotes-csv",
+        str(quote_csv),
+        "--trade-size",
+        "2",
+        "--format",
+        "json",
+    ])
+
+    assert exit_code == 0
+    assert '"buy_venue": "Venue A"' in capsys.readouterr().out
